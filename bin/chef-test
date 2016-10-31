@@ -25,6 +25,7 @@ repo = SimpleConfig.git.url
 repo_dir = 'chef.git'
 branch = SimpleConfig.git.branch
 pwd = Dir.pwd
+status = true
 
 # Knife Opts
 class KnifeCliTemplate
@@ -53,39 +54,44 @@ cookbooks = g.gtree(branch).
               map{|f| f.match(/cookbooks\/([a-z\-\_]*)\//)[1] }.uniq
 logger.info("Cookbooks: Find changes in: #{cookbooks}")
 
-# Create environment
-logger.info("Chef: create environment #{environment}")
-Chef::Knife.run %W( environment create #{environment} --disable-editing), KnifeCliTemplate.options
+if cookbooks.any?
+  # Create environment
+  logger.info("Chef: create environment #{environment}")
+  Chef::Knife.run %W( environment create #{environment} --disable-editing), KnifeCliTemplate.options
 
-# Update environment
-Dir.chdir "#{repo_dir}/berks"
-logger.info("Berks: install")
-system "bundle exec berks install -q"
-logger.info("Berks: update versions from #{branch}")
-system({"BERKS_TWIKET_BRANCH" => branch}, "bundle exec berks update #{cookbooks.join(' ')} -q")
-logger.info("Berks: apply versions to #{environment}")
-system "bundle exec berks apply #{environment} -q"
-Dir.chdir pwd
-
-# NodeUp/Down
-status = true
-cookbooks.each do |cookbook|
-  Dir.chdir "#{repo_dir}/cookbooks/#{cookbook}"
-  status &= system({
-    "CHEF_URL" => SimpleConfig.chef.url,
-    "CHEF_APIUSER" => SimpleConfig.chef.apiuser,
-    "CHEF_APIKEY" => SimpleConfig.chef.apikey,
-    "CHEF_ENV" => environment,
-  }, "vagrant up")
-  system "vagrant destroy -f"
+  # Update environment
+  Dir.chdir "#{repo_dir}/berks"
+  logger.info("Berks: install")
+  system "bundle exec berks install -q"
+  logger.info("Berks: update versions from #{branch}")
+  system({"BERKS_TWIKET_BRANCH" => branch}, "bundle exec berks update #{cookbooks.join(' ')} -q")
+  logger.info("Berks: apply versions to #{environment}")
+  system "bundle exec berks apply #{environment} -q"
   Dir.chdir pwd
+
+  # NodeUp/Down
+  cookbooks.each do |cookbook|
+    Dir.chdir "#{repo_dir}/cookbooks/#{cookbook}"
+    status &= system({
+      "CHEF_URL" => SimpleConfig.chef.url,
+      "CHEF_APIUSER" => SimpleConfig.chef.apiuser,
+      "CHEF_APIKEY" => SimpleConfig.chef.apikey,
+      "CHEF_ENV" => environment,
+    }, "vagrant up")
+    system "vagrant destroy -f"
+    Dir.chdir pwd
+  end
+
+  # Delete environment
+  logger.info("Chef: delete environment #{environment}")
+  Chef::Knife.run %W( environment delete #{environment} --yes), KnifeCliTemplate.options
+else
+  logger.info("Skip testing: no changes.")
 end
 
-# Cleanup
+# Cleanup repo
 logger.info("Git: delete repo directory #{repo_dir}")
 FileUtils.rm_rf(repo_dir)
-logger.info("Chef: delete environment #{environment}")
-Chef::Knife.run %W( environment delete #{environment} --yes), KnifeCliTemplate.options
 
 # ExitStatus
 exit 1 unless status
