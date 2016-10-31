@@ -24,12 +24,11 @@ environment = "ci-runner-#{rand(36**6).to_s(36)}"
 repo = SimpleConfig.git.url
 repo_dir = 'chef.git'
 branch = SimpleConfig.git.branch
-chef_keyfile = File.absolute_path "#{SimpleConfig.workdir}/#{SimpleConfig.chef.apikey}"
 pwd = Dir.pwd
 
 # Settings
 Chef::Config[:node_name] = SimpleConfig.chef.apiuser
-Chef::Config[:client_key] = chef_keyfile
+Chef::Config[:client_key] = SimpleConfig.chef.apikey
 Chef::Config[:chef_server_url] = SimpleConfig.chef.url
 Chef::Config[:knife][:yes] = ''
 Chef::Config[:knife][:editor] = 'vim'
@@ -82,7 +81,7 @@ cookbooks.each do |cookbook|
   status &= system({
     "CHEF_URL" => SimpleConfig.chef.url,
     "CHEF_APIUSER" => SimpleConfig.chef.apiuser,
-    "CHEF_APIKEY" => chef_keyfile,
+    "CHEF_APIKEY" => SimpleConfig.chef.apikey,
     "CHEF_ENV" => environment,
   }, "vagrant up")
   system "vagrant destroy -f"
