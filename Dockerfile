@@ -14,4 +14,4 @@ RUN cd /opt/chef-test; bundle install
 
 ENV PATH /opt/chef-test/bin:$PATH
 
-WORKDIR ~
+WORKDIR /workdir

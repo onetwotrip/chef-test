@@ -21,8 +21,6 @@ end
 
 # Vars
 environment = "ci-runner-#{rand(36**6).to_s(36)}"
-repo = SimpleConfig.git.url
-repo_dir = 'chef.git'
 branch = SimpleConfig.git.branch
 pwd = Dir.pwd
 status = true
@@ -35,21 +33,17 @@ KnifeCliTemplate.option(:yes, long: '--yes')
 KnifeCliTemplate.option(:disable_editing, long: '--disable-editing', :boolean => true)
 
 # Git
-logger.info("Git: clone #{repo} branch #{branch}")
-g = Git::Base.clone repo, repo_dir
-g.checkout branch
+logger.info("Git: clone #{SimpleConfig.git.url} branch #{branch}")
+system "git init"
+system "git rev-parse --is-inside-work-tree"
+system "git config remote.origin.url #{SimpleConfig.git.url}"
+system "git -c core.askpass=true fetch --tags --progress git@gitlab.twiket.com:chef/chef.git +refs/heads/*:refs/remotes/origin/* +refs/merge-requests/*/head:refs/remotes/origin/merge-requests/*"
+system "git checkout -f #{SimpleConfig.git.commit}"
 logger.info("Git: clone done")
-
-logger.info("Git: merge develop")
-g.merge(g.branch('develop'))
-
-logger.info("Git: search cookbooks changes")
 
 # Get cookbooks
 logger.info("Cookbooks: search modified cookbooks")
-cookbooks = g.gtree(branch).
-              diff('develop').
-              map(&:path).
+cookbooks = `git diff --name-only origin/develop`.split(/\n/).
               grep(/cookbooks\/(.*)\//).
               map{|f| f.match(/cookbooks\/([a-z\-\_]*)\//)[1] }.uniq
 logger.info("Cookbooks: Find changes in: #{cookbooks}")
@@ -60,7 +54,7 @@ if cookbooks.any?
   Chef::Knife.run %W( environment create #{environment} --disable-editing), KnifeCliTemplate.options
 
   # Update environment
-  Dir.chdir "#{repo_dir}/berks"
+  Dir.chdir "berks"
   logger.info("Berks: install")
   system "bundle exec berks install -q"
   logger.info("Berks: update versions from #{branch}")
@@ -71,7 +65,7 @@ if cookbooks.any?
 
   # NodeUp/Down
   cookbooks.each do |cookbook|
-    Dir.chdir "#{repo_dir}/cookbooks/#{cookbook}"
+    Dir.chdir "cookbooks/#{cookbook}"
     status &= system({
       "CHEF_URL" => SimpleConfig.chef.url,
       "CHEF_APIUSER" => SimpleConfig.chef.apiuser,
@@ -88,10 +82,6 @@ if cookbooks.any?
 else
   logger.info("Skip testing: no changes.")
 end
-
-# Cleanup repo
-logger.info("Git: delete repo directory #{repo_dir}")
-FileUtils.rm_rf(repo_dir)
 
 # ExitStatus
 exit 1 unless status
