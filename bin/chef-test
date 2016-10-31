@@ -26,13 +26,6 @@ repo_dir = 'chef.git'
 branch = SimpleConfig.git.branch
 pwd = Dir.pwd
 
-# Settings
-Chef::Config[:node_name] = SimpleConfig.chef.apiuser
-Chef::Config[:client_key] = SimpleConfig.chef.apikey
-Chef::Config[:chef_server_url] = SimpleConfig.chef.url
-Chef::Config[:knife][:yes] = ''
-Chef::Config[:knife][:editor] = 'vim'
-
 # Knife Opts
 class KnifeCliTemplate
   include Mixlib::CLI
