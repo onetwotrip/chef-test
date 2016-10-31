@@ -1,5 +1,4 @@
 source 'https://rubygems.org'
-gem 'knife-linode', git: 'https://github.com/onetwotrip/knife-linode.git'
 gem 'chef'
 gem 'git', git: 'https://github.com/onetwotrip/ruby-git.git'
 gem 'colorize'

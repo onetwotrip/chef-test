@@ -31,8 +31,6 @@ pwd = Dir.pwd
 Chef::Config[:node_name] = SimpleConfig.chef.apiuser
 Chef::Config[:client_key] = chef_keyfile
 Chef::Config[:chef_server_url] = SimpleConfig.chef.url
-Chef::Config[:knife][:linode_api_key] = SimpleConfig.linode.apikey
-Chef::Config[:knife][:environment] = SimpleConfig.deploy.chef.env
 Chef::Config[:knife][:yes] = ''
 Chef::Config[:knife][:editor] = 'vim'
 
